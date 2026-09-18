@@ -1,0 +1,2220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>RAG Document Assistant</title>
+
+    <!-- Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Security: sanitize rendered HTML -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
+
+    <style>
+
+        /* =====================================================
+           GLOBAL
+        ===================================================== */
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --background: #f6f7fb;
+            --white: #ffffff;
+            --border: #e5e7eb;
+            --text: #111827;
+            --muted: #6b7280;
+            --light: #f3f4f6;
+            --dark: #111827;
+            --dark-hover: #1f2937;
+
+            --green: #16a34a;
+            --green-bg: #f0fdf4;
+            --green-border: #bbf7d0;
+
+            --red: #dc2626;
+            --red-bg: #fef2f2;
+            --red-border: #fecaca;
+
+            --blue-bg: #eff6ff;
+            --blue-border: #bfdbfe;
+
+            --shadow:
+                0 8px 28px rgba(17, 24, 39, 0.06);
+        }
+
+        body {
+            font-family:
+                Inter,
+                Arial,
+                Helvetica,
+                sans-serif;
+
+            background: var(--background);
+            color: var(--text);
+
+            min-height: 100vh;
+        }
+
+        button,
+        textarea,
+        input {
+            font-family: inherit;
+        }
+
+
+        /* =====================================================
+           MAIN CONTAINER
+        ===================================================== */
+
+        .app-container {
+            width: min(1280px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 22px 0 28px;
+        }
+
+
+        /* =====================================================
+           HEADER
+        ===================================================== */
+
+        .header {
+            background: var(--white);
+
+            border: 1px solid var(--border);
+            border-radius: 18px;
+
+            padding: 18px 22px;
+
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+
+            gap: 18px;
+
+            margin-bottom: 18px;
+
+            box-shadow: var(--shadow);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 13px;
+        }
+
+        .logo {
+            width: 48px;
+            height: 48px;
+
+            border-radius: 13px;
+
+            background: var(--dark);
+            color: white;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        .brand-text h1 {
+            font-size: 20px;
+            line-height: 1.2;
+        }
+
+        .brand-text p {
+            margin-top: 4px;
+
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+
+            gap: 8px;
+
+            padding: 8px 12px;
+
+            border: 1px solid var(--border);
+            border-radius: 999px;
+
+            background: #f9fafb;
+
+            font-size: 12px;
+            color: #374151;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+
+            border-radius: 50%;
+
+            background: var(--green);
+        }
+
+
+        /* =====================================================
+           MAIN GRID
+        ===================================================== */
+
+        .main-grid {
+            display: grid;
+
+            grid-template-columns:
+                292px
+                minmax(0, 1fr);
+
+            gap: 18px;
+
+            align-items: start;
+        }
+
+
+        /* =====================================================
+           SIDEBAR
+        ===================================================== */
+
+        .sidebar {
+            background: var(--white);
+
+            border: 1px solid var(--border);
+            border-radius: 18px;
+
+            padding: 18px;
+
+            box-shadow: var(--shadow);
+        }
+
+        .sidebar-heading {
+            font-size: 15px;
+            font-weight: 750;
+        }
+
+        .sidebar-description {
+            margin-top: 6px;
+
+            font-size: 12px;
+            line-height: 1.55;
+
+            color: var(--muted);
+        }
+
+
+        /* =====================================================
+           UPLOAD
+        ===================================================== */
+
+        .upload-box {
+            margin-top: 16px;
+
+            padding: 16px;
+
+            border:
+                1.5px dashed
+                #cfd4dc;
+
+            border-radius: 14px;
+
+            background: #fcfcfd;
+        }
+
+        .upload-icon {
+            width: 42px;
+            height: 42px;
+
+            margin: 0 auto 10px;
+
+            border-radius: 12px;
+
+            background: var(--light);
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            font-size: 20px;
+        }
+
+        .upload-box p {
+            text-align: center;
+
+            color: var(--muted);
+
+            font-size: 11px;
+
+            margin-bottom: 11px;
+        }
+
+        #fileInput {
+            width: 100%;
+
+            padding: 7px;
+
+            border: 1px solid var(--border);
+            border-radius: 9px;
+
+            background: white;
+
+            font-size: 11px;
+        }
+
+        .upload-button {
+            width: 100%;
+
+            margin-top: 10px;
+
+            padding: 10px 12px;
+
+            border: none;
+            border-radius: 9px;
+
+            background: var(--dark);
+            color: white;
+
+            cursor: pointer;
+
+            font-size: 12px;
+            font-weight: 700;
+
+            transition: 0.18s ease;
+        }
+
+        .upload-button:hover {
+            background: var(--dark-hover);
+        }
+
+        .upload-button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .upload-result {
+            display: none;
+
+            margin-top: 10px;
+
+            padding: 9px 10px;
+
+            border-radius: 9px;
+
+            font-size: 11px;
+            line-height: 1.45;
+        }
+
+        .upload-result.success {
+            display: block;
+
+            background: var(--green-bg);
+
+            border:
+                1px solid
+                var(--green-border);
+
+            color: #166534;
+        }
+
+        .upload-result.error {
+            display: block;
+
+            background: var(--red-bg);
+
+            border:
+                1px solid
+                var(--red-border);
+
+            color: #991b1b;
+        }
+
+
+        /* =====================================================
+           RAG PIPELINE
+        ===================================================== */
+
+        .architecture {
+            margin-top: 18px;
+
+            padding-top: 17px;
+
+            border-top:
+                1px solid
+                var(--border);
+        }
+
+        .architecture h3 {
+            font-size: 12px;
+
+            font-weight: 750;
+
+            margin-bottom: 10px;
+        }
+
+        .flow {
+            display: flex;
+
+            flex-direction: column;
+
+            gap: 5px;
+        }
+
+        .flow-item {
+            padding: 7px 9px;
+
+            border:
+                1px solid
+                #edf0f3;
+
+            border-radius: 8px;
+
+            background: #f9fafb;
+
+            color: #4b5563;
+
+            font-size: 10.5px;
+        }
+
+        .flow-arrow {
+            text-align: center;
+
+            color: #9ca3af;
+
+            font-size: 10px;
+        }
+
+        .system-note {
+            margin-top: 16px;
+
+            padding: 10px;
+
+            border-radius: 10px;
+
+            background: var(--blue-bg);
+
+            border:
+                1px solid
+                var(--blue-border);
+
+            color: #1e40af;
+
+            font-size: 10.5px;
+
+            line-height: 1.5;
+        }
+
+
+        /* =====================================================
+           CHAT
+        ===================================================== */
+
+        .chat-container {
+            background: var(--white);
+
+            border:
+                1px solid
+                var(--border);
+
+            border-radius: 18px;
+
+            min-height: 720px;
+
+            display: flex;
+
+            flex-direction: column;
+
+            overflow: hidden;
+
+            box-shadow: var(--shadow);
+        }
+
+        .chat-header {
+            padding: 17px 20px;
+
+            border-bottom:
+                1px solid
+                var(--border);
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: space-between;
+
+            gap: 12px;
+        }
+
+        .chat-header h2 {
+            font-size: 15px;
+        }
+
+        .chat-header p {
+            margin-top: 3px;
+
+            font-size: 11px;
+
+            color: var(--muted);
+        }
+
+        .grounded-badge {
+            padding: 6px 9px;
+
+            border-radius: 999px;
+
+            background: var(--green-bg);
+
+            border:
+                1px solid
+                var(--green-border);
+
+            color: #166534;
+
+            font-size: 10px;
+
+            font-weight: 700;
+        }
+
+
+        /* =====================================================
+           MESSAGES
+        ===================================================== */
+
+        .messages {
+            flex: 1;
+
+            padding: 22px;
+
+            overflow-y: auto;
+
+            min-height: 500px;
+
+            max-height: 565px;
+        }
+
+        .welcome {
+            max-width: 560px;
+
+            margin: 92px auto;
+
+            text-align: center;
+        }
+
+        .welcome-icon {
+            width: 58px;
+            height: 58px;
+
+            margin: 0 auto 15px;
+
+            border-radius: 16px;
+
+            background: var(--dark);
+
+            color: white;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            font-size: 24px;
+        }
+
+        .welcome h3 {
+            font-size: 19px;
+
+            margin-bottom: 7px;
+        }
+
+        .welcome p {
+            color: var(--muted);
+
+            font-size: 12px;
+
+            line-height: 1.65;
+        }
+
+
+        /* =====================================================
+           MESSAGE BUBBLES
+        ===================================================== */
+
+        .message {
+            display: flex;
+
+            margin-bottom: 20px;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-content {
+            width: min(850px, 86%);
+        }
+
+        .message-label {
+            margin-bottom: 5px;
+
+            color: #9ca3af;
+
+            font-size: 10px;
+
+            font-weight: 650;
+        }
+
+        .user .message-label {
+            text-align: right;
+        }
+
+        .message-bubble {
+            padding: 13px 15px;
+
+            border-radius: 14px;
+
+            font-size: 13px;
+
+            line-height: 1.65;
+
+            overflow-wrap: anywhere;
+        }
+
+        .user .message-bubble {
+            background: var(--dark);
+
+            color: white;
+
+            border-bottom-right-radius: 4px;
+
+            white-space: pre-wrap;
+        }
+
+        .assistant .message-bubble {
+            background: var(--light);
+
+            color: #1f2937;
+
+            border-bottom-left-radius: 4px;
+        }
+
+
+        /* =====================================================
+           MARKDOWN
+        ===================================================== */
+
+        .assistant .message-bubble p {
+            margin-bottom: 10px;
+        }
+
+        .assistant .message-bubble p:last-child {
+            margin-bottom: 0;
+        }
+
+        .assistant .message-bubble strong {
+            color: #111827;
+
+            font-weight: 750;
+        }
+
+        .assistant .message-bubble ul,
+        .assistant .message-bubble ol {
+            margin:
+                8px
+                0
+                10px
+                23px;
+        }
+
+        .assistant .message-bubble li {
+            margin: 4px 0;
+        }
+
+        .assistant .message-bubble code {
+            padding: 2px 5px;
+
+            border-radius: 5px;
+
+            background: #e5e7eb;
+
+            color: #111827;
+
+            font-family:
+                Consolas,
+                "Courier New",
+                monospace;
+
+            font-size: 11.5px;
+        }
+
+        .assistant .message-bubble pre {
+            margin: 10px 0;
+
+            padding: 12px;
+
+            overflow-x: auto;
+
+            border-radius: 9px;
+
+            background: #111827;
+
+            color: #f9fafb;
+        }
+
+        .assistant .message-bubble pre code {
+            padding: 0;
+
+            background: transparent;
+
+            color: inherit;
+
+            white-space: pre;
+
+            font-size: 11px;
+
+            line-height: 1.55;
+        }
+
+        .assistant .message-bubble blockquote {
+            margin: 9px 0;
+
+            padding: 8px 11px;
+
+            border-left:
+                3px solid
+                #9ca3af;
+
+            background: white;
+
+            border-radius:
+                0
+                7px
+                7px
+                0;
+        }
+
+        .assistant .message-bubble a {
+            color: #1d4ed8;
+
+            text-decoration: underline;
+        }
+
+        .source-citation {
+            display: inline-block;
+
+            margin: 0 2px;
+
+            padding: 2px 6px;
+
+            border-radius: 999px;
+
+            background: #e0e7ff;
+
+            color: #3730a3;
+
+            font-size: 10px;
+
+            font-weight: 750;
+        }
+
+
+        /* =====================================================
+           VALIDATION
+        ===================================================== */
+
+        .validation {
+            display: inline-flex;
+
+            align-items: center;
+
+            gap: 6px;
+
+            margin-top: 8px;
+
+            padding: 5px 9px;
+
+            border-radius: 999px;
+
+            font-size: 10px;
+
+            font-weight: 700;
+        }
+
+        .validation.valid {
+            background: var(--green-bg);
+
+            border:
+                1px solid
+                var(--green-border);
+
+            color: #166534;
+        }
+
+        .validation.invalid {
+            background: var(--red-bg);
+
+            border:
+                1px solid
+                var(--red-border);
+
+            color: #991b1b;
+        }
+
+
+        /* =====================================================
+           SOURCES
+        ===================================================== */
+
+        .sources {
+            margin-top: 10px;
+
+            padding: 10px;
+
+            background: white;
+
+            border:
+                1px solid
+                var(--border);
+
+            border-radius: 10px;
+        }
+
+        .sources-title {
+            margin-bottom: 7px;
+
+            color: #6b7280;
+
+            font-size: 10px;
+
+            font-weight: 800;
+
+            text-transform: uppercase;
+
+            letter-spacing: 0.45px;
+        }
+
+        .source-item {
+            display: flex;
+
+            align-items: center;
+
+            justify-content: space-between;
+
+            gap: 8px;
+
+            padding: 7px 0;
+
+            border-bottom:
+                1px solid
+                #f0f1f3;
+
+            font-size: 10.5px;
+
+            color: #4b5563;
+        }
+
+        .source-item:last-child {
+            border-bottom: none;
+        }
+
+        .source-name {
+            min-width: 0;
+
+            overflow: hidden;
+
+            text-overflow: ellipsis;
+
+            white-space: nowrap;
+        }
+
+        .source-meta {
+            flex: 0 0 auto;
+
+            white-space: nowrap;
+
+            color: #6b7280;
+        }
+
+
+        /* =====================================================
+           TYPING
+        ===================================================== */
+
+        .typing {
+            display: none;
+
+            align-items: center;
+
+            gap: 5px;
+
+            margin:
+                0
+                0
+                18px
+                2px;
+
+            color: #9ca3af;
+
+            font-size: 10px;
+        }
+
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+
+            border-radius: 50%;
+
+            background: #9ca3af;
+
+            animation:
+                bounce
+                1.15s
+                infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.15s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.30s;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            60%,
+            100% {
+                transform: translateY(0);
+
+                opacity: 0.55;
+            }
+
+            30% {
+                transform: translateY(-5px);
+
+                opacity: 1;
+            }
+        }
+
+
+        /* =====================================================
+           INPUT
+        ===================================================== */
+
+        .input-area {
+            border-top:
+                1px solid
+                var(--border);
+
+            padding: 14px;
+
+            background: white;
+        }
+
+        .input-wrapper {
+            display: flex;
+
+            gap: 9px;
+
+            align-items: flex-end;
+        }
+
+        #question {
+            flex: 1;
+
+            min-height: 47px;
+
+            max-height: 130px;
+
+            resize: none;
+
+            padding: 12px 13px;
+
+            border:
+                1px solid
+                #d1d5db;
+
+            border-radius: 11px;
+
+            outline: none;
+
+            background: white;
+
+            color: #111827;
+
+            font-size: 13px;
+
+            line-height: 1.45;
+        }
+
+        #question:focus {
+            border-color: #9ca3af;
+
+            box-shadow:
+                0 0 0 3px
+                rgba(
+                    107,
+                    114,
+                    128,
+                    0.10
+                );
+        }
+
+        #ask-button {
+            height: 47px;
+
+            padding: 0 19px;
+
+            border: none;
+
+            border-radius: 11px;
+
+            background: var(--dark);
+
+            color: white;
+
+            cursor: pointer;
+
+            font-size: 12px;
+
+            font-weight: 750;
+        }
+
+        #ask-button:hover {
+            background: var(--dark-hover);
+        }
+
+        #ask-button:disabled {
+            background: #9ca3af;
+
+            cursor: not-allowed;
+        }
+
+        .input-hint {
+            margin-top: 6px;
+
+            color: #9ca3af;
+
+            font-size: 9.5px;
+        }
+
+
+        /* =====================================================
+           RESPONSIVE
+        ===================================================== */
+
+        @media (max-width: 900px) {
+
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                order: 2;
+            }
+
+            .chat-container {
+                min-height: 680px;
+            }
+        }
+
+        @media (max-width: 620px) {
+
+            .app-container {
+                width:
+                    calc(100% - 18px);
+
+                padding-top: 9px;
+            }
+
+            .header {
+                padding: 15px;
+            }
+
+            .brand-text h1 {
+                font-size: 17px;
+            }
+
+            .status {
+                display: none;
+            }
+
+            .messages {
+                padding: 15px;
+            }
+
+            .message-content {
+                max-width: 94%;
+            }
+
+            .grounded-badge {
+                display: none;
+            }
+
+            .input-wrapper {
+                align-items: stretch;
+            }
+
+            #ask-button {
+                padding: 0 14px;
+            }
+        }
+
+    </style>
+</head>
+
+
+<body>
+
+<div class="app-container">
+
+
+    <!-- =====================================================
+         HEADER
+    ====================================================== -->
+
+    <header class="header">
+
+        <div class="brand">
+
+            <div class="logo">
+                AI
+            </div>
+
+            <div class="brand-text">
+
+                <h1>
+                    RAG Document Assistant
+                </h1>
+
+                <p>
+                    PostgreSQL + pgvector + Gemini
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <div class="status">
+
+            <span class="status-dot"></span>
+
+            RAG System Online
+
+        </div>
+
+    </header>
+
+
+    <!-- =====================================================
+         MAIN
+    ====================================================== -->
+
+    <div class="main-grid">
+
+
+        <!-- =================================================
+             SIDEBAR
+        ================================================== -->
+
+        <aside class="sidebar">
+
+
+            <div class="sidebar-heading">
+                Document Knowledge Base
+            </div>
+
+
+            <p class="sidebar-description">
+
+                Upload a document to extract, chunk,
+                embed, and store its content in
+                PostgreSQL for retrieval.
+
+            </p>
+
+
+            <!-- Upload Box -->
+
+            <div class="upload-box">
+
+                <div class="upload-icon">
+                    📄
+                </div>
+
+
+                <p>
+                    PDF, DOCX, TXT or MD
+                </p>
+
+
+                <input
+                    type="file"
+                    id="fileInput"
+                    accept=".pdf,.docx,.txt,.md"
+                >
+
+
+                <button
+                    class="upload-button"
+                    id="uploadButton"
+                    onclick="uploadDocument()"
+                >
+                    Upload &amp; Index
+                </button>
+
+
+                <div
+                    id="uploadResult"
+                    class="upload-result"
+                ></div>
+
+            </div>
+
+
+            <!-- RAG Pipeline -->
+
+            <div class="architecture">
+
+                <h3>
+                    RAG Pipeline
+                </h3>
+
+
+                <div class="flow">
+
+                    <div class="flow-item">
+                        📄 Document
+                    </div>
+
+                    <div class="flow-arrow">
+                        ↓
+                    </div>
+
+
+                    <div class="flow-item">
+                        ✂️ Meaningful Chunking
+                    </div>
+
+                    <div class="flow-arrow">
+                        ↓
+                    </div>
+
+
+                    <div class="flow-item">
+                        🧠 Gemini Embeddings
+                    </div>
+
+                    <div class="flow-arrow">
+                        ↓
+                    </div>
+
+
+                    <div class="flow-item">
+                        🗄️ PostgreSQL + pgvector
+                    </div>
+
+                    <div class="flow-arrow">
+                        ↓
+                    </div>
+
+
+                    <div class="flow-item">
+                        🔎 Similarity Retrieval
+                    </div>
+
+                    <div class="flow-arrow">
+                        ↓
+                    </div>
+
+
+                    <div class="flow-item">
+                        🤖 Gemini Answer
+                    </div>
+
+                    <div class="flow-arrow">
+                        ↓
+                    </div>
+
+
+                    <div class="flow-item">
+                        🛡️ Response Validator
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Grounding Information -->
+
+            <div class="system-note">
+
+                <strong>
+                    Grounding protection:
+                </strong>
+
+                Answers are generated from retrieved
+                document evidence and validated before
+                being shown as verified.
+
+            </div>
+
+        </aside>
+
+
+        <!-- =================================================
+             CHAT
+        ================================================== -->
+
+        <main class="chat-container">
+
+
+            <!-- Chat Header -->
+
+            <div class="chat-header">
+
+                <div>
+
+                    <h2>
+                        Ask your documents
+                    </h2>
+
+                    <p>
+                        Answers are generated from
+                        retrieved document evidence.
+                    </p>
+
+                </div>
+
+
+                <div class="grounded-badge">
+
+                    ✓ Document Grounded
+
+                </div>
+
+            </div>
+
+
+            <!-- Messages -->
+
+            <div
+                class="messages"
+                id="messages"
+            >
+
+
+                <!-- Welcome -->
+
+                <div
+                    class="welcome"
+                    id="welcome"
+                >
+
+                    <div class="welcome-icon">
+                        ✦
+                    </div>
+
+
+                    <h3>
+                        Ask anything about your documents
+                    </h3>
+
+
+                    <p>
+
+                        The assistant retrieves relevant
+                        information from PostgreSQL and
+                        uses Gemini to generate a grounded
+                        response with source references.
+
+                    </p>
+
+                </div>
+
+
+                <!-- Typing Indicator -->
+
+                <div
+                    class="typing"
+                    id="typing"
+                >
+
+                    <span class="typing-dot"></span>
+
+                    <span class="typing-dot"></span>
+
+                    <span class="typing-dot"></span>
+
+                    <span style="margin-left: 5px;">
+                        Searching documents and generating answer...
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <!-- Input -->
+
+            <div class="input-area">
+
+
+                <div class="input-wrapper">
+
+                    <textarea
+                        id="question"
+                        placeholder="Ask a question about your documents..."
+                        rows="1"
+                    ></textarea>
+
+
+                    <button
+                        id="ask-button"
+                        onclick="askQuestion()"
+                    >
+                        Ask
+                    </button>
+
+                </div>
+
+
+                <div class="input-hint">
+
+                    Enter to send • Shift + Enter for a new line
+
+                </div>
+
+            </div>
+
+        </main>
+
+    </div>
+
+</div>
+
+
+<script>
+
+    /* ========================================================
+       MARKDOWN CONFIGURATION
+    ======================================================== */
+
+    if (typeof marked !== "undefined") {
+
+        marked.setOptions({
+            gfm: true,
+            breaks: true
+        });
+
+    }
+
+
+    /* ========================================================
+       RENDER ASSISTANT MARKDOWN
+    ======================================================== */
+
+    function renderAssistantMarkdown(text) {
+
+        if (!text) {
+            return "";
+        }
+        // Remove unnecessary assistant heading if Gemini returns it
+        text = text.replace(/^\s*\*\*RAG Assistant\*\*\s*/i, "");
+        text = text.replace(/^\s*RAG Assistant\s*/i, "");
+
+
+        /*
+         * If Markdown libraries fail to load,
+         * safely display normal text.
+         */
+
+        if (
+            typeof marked === "undefined" ||
+            typeof DOMPurify === "undefined"
+        ) {
+
+            const fallback =
+                document.createElement("div");
+
+            fallback.textContent =
+                text;
+
+            return fallback.innerHTML
+                .replace(/\n/g, "<br>");
+
+        }
+
+
+        /*
+         * Convert Markdown → HTML
+         */
+
+        let html =
+            marked.parse(text);
+
+
+        /*
+         * Sanitize HTML to prevent unsafe content.
+         */
+
+        html =
+            DOMPurify.sanitize(
+                html,
+                {
+                    USE_PROFILES: {
+                        html: true
+                    }
+                }
+            );
+
+
+        /*
+         * Convert:
+         *
+         * [SOURCE 1]
+         *
+         * into a visual citation badge.
+         */
+
+        html =
+            html.replace(
+                /\[SOURCE\s+(\d+)\]/gi,
+
+                '<span class="source-citation">SOURCE $1</span>'
+            );
+
+
+        return html;
+    }
+
+
+    /* ========================================================
+       SCROLL
+    ======================================================== */
+
+    function scrollToBottom() {
+
+        const messages =
+            document.getElementById("messages");
+
+        messages.scrollTop =
+            messages.scrollHeight;
+    }
+
+
+    /* ========================================================
+       ADD MESSAGE
+    ======================================================== */
+
+    function addMessage(
+        type,
+        text,
+        sources = [],
+        validated = null
+    ) {
+
+
+        const messages =
+            document.getElementById("messages");
+
+
+        const welcome =
+            document.getElementById("welcome");
+
+
+        if (welcome) {
+            welcome.remove();
+        }
+
+
+        /*
+         * Message wrapper
+         */
+
+        const wrapper =
+            document.createElement("div");
+
+        wrapper.className =
+            `message ${type}`;
+
+
+        /*
+         * Content wrapper
+         */
+
+        const content =
+            document.createElement("div");
+
+        content.className =
+            "message-content";
+
+
+        /*
+         * Label
+         */
+
+        const label =
+            document.createElement("div");
+
+        label.className =
+            "message-label";
+
+
+        label.textContent =
+            type === "user"
+                ? "You"
+                : "RAG Assistant";
+
+
+        /*
+         * Message bubble
+         */
+
+        const bubble =
+            document.createElement("div");
+
+        bubble.className =
+            "message-bubble";
+
+
+        /*
+         * USER:
+         * Always plain text.
+         */
+
+        if (type === "user") {
+
+            bubble.textContent =
+                text;
+
+        }
+
+
+        /*
+         * ASSISTANT:
+         * Render Markdown safely.
+         */
+
+        else {
+
+            bubble.innerHTML =
+                renderAssistantMarkdown(text);
+
+        }
+
+
+        content.appendChild(label);
+
+        content.appendChild(bubble);
+
+
+        /* ====================================================
+           VALIDATION BADGE
+        ==================================================== */
+
+        if (
+            type === "assistant" &&
+            validated !== null
+        ) {
+
+
+            const validation =
+                document.createElement("div");
+
+
+            validation.className =
+                validated
+                    ? "validation valid"
+                    : "validation invalid";
+
+
+            validation.textContent =
+                validated
+                    ? "✓ Verified from document evidence"
+                    : "⚠ Not verified from document evidence";
+
+
+            content.appendChild(
+                validation
+            );
+
+        }
+
+
+        /* ====================================================
+           SOURCES
+        ==================================================== */
+
+        if (
+            type === "assistant" &&
+            Array.isArray(sources) &&
+            sources.length > 0
+        ) {
+
+
+            const sourceBox =
+                document.createElement("div");
+
+
+            sourceBox.className =
+                "sources";
+
+
+            const title =
+                document.createElement("div");
+
+
+            title.className =
+                "sources-title";
+
+
+            title.textContent =
+                "Retrieved Sources";
+
+
+            sourceBox.appendChild(
+                title
+            );
+
+
+            sources.forEach(
+                function(source) {
+
+
+                    const item =
+                        document.createElement("div");
+
+
+                    item.className =
+                        "source-item";
+
+
+                    /*
+                     * Filename
+                     */
+
+                    const name =
+                        document.createElement("div");
+
+
+                    name.className =
+                        "source-name";
+
+
+                    name.textContent =
+                        source.filename ||
+                        "Document";
+
+
+                    /*
+                     * Metadata
+                     */
+
+                    const meta =
+                        document.createElement("div");
+
+
+                    meta.className =
+                        "source-meta";
+
+
+                    const chunk =
+                        source.chunk_index ??
+                        "-";
+
+
+                    let similarity =
+                        source.similarity;
+
+
+                    if (
+                        typeof similarity ===
+                        "number"
+                    ) {
+
+                        similarity =
+                            similarity.toFixed(4);
+
+                    }
+
+
+                    meta.textContent =
+                        `Chunk ${chunk} • Similarity ${similarity ?? "-"}`;
+
+
+                    item.appendChild(name);
+
+                    item.appendChild(meta);
+
+
+                    sourceBox.appendChild(item);
+
+                }
+            );
+
+
+            content.appendChild(
+                sourceBox
+            );
+
+        }
+
+
+        /*
+         * Add everything to page
+         */
+
+        wrapper.appendChild(
+            content
+        );
+
+
+        messages.appendChild(
+            wrapper
+        );
+
+
+        scrollToBottom();
+
+    }
+
+
+    /* ========================================================
+       ASK QUESTION
+    ======================================================== */
+
+    async function askQuestion() {
+
+
+        const input =
+            document.getElementById("question");
+
+
+        const button =
+            document.getElementById("ask-button");
+
+
+        const typing =
+            document.getElementById("typing");
+
+
+        const question =
+            input.value.trim();
+
+
+        /*
+         * Empty question
+         */
+
+        if (!question) {
+
+            input.focus();
+
+            return;
+        }
+
+
+        /*
+         * Display user's question
+         */
+
+        addMessage(
+            "user",
+            question
+        );
+
+
+        /*
+         * Clear input
+         */
+
+        input.value = "";
+
+        input.style.height =
+            "47px";
+
+
+        button.disabled =
+            true;
+
+
+        typing.style.display =
+            "flex";
+
+
+        scrollToBottom();
+
+
+        try {
+
+
+            /*
+             * Send question to Flask
+             */
+
+            const response =
+                await fetch(
+                    "/chat",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
+
+                        body:
+                            JSON.stringify({
+                                question:
+                                    question
+                            })
+                    }
+                );
+
+
+            /*
+             * Parse JSON
+             */
+
+            let data;
+
+
+            try {
+
+                data =
+                    await response.json();
+
+            }
+
+            catch (jsonError) {
+
+                throw new Error(
+                    "The server returned an invalid response."
+                );
+
+            }
+
+
+            /*
+             * HTTP error
+             */
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.error ||
+                    "The request failed."
+                );
+
+            }
+
+
+            /*
+             * Display assistant answer
+             */
+
+            addMessage(
+                "assistant",
+
+                data.answer ||
+                "No answer was returned.",
+
+                data.sources ||
+                [],
+
+                data.validated
+            );
+
+
+        }
+
+        catch (error) {
+
+
+            /*
+             * Display frontend error
+             */
+
+            addMessage(
+                "assistant",
+
+                "I couldn't complete the request.\n\n" +
+                "**Error:** " +
+                (
+                    error.message ||
+                    "Unknown error"
+                ),
+
+                [],
+
+                false
+            );
+
+        }
+
+        finally {
+
+
+            typing.style.display =
+                "none";
+
+
+            button.disabled =
+                false;
+
+
+            input.focus();
+
+        }
+
+    }
+
+
+    /* ========================================================
+       UPLOAD DOCUMENT
+    ======================================================== */
+
+    async function uploadDocument() {
+
+
+        const fileInput =
+            document.getElementById("fileInput");
+
+
+        const button =
+            document.getElementById("uploadButton");
+
+
+        const result =
+            document.getElementById("uploadResult");
+
+
+        /*
+         * Check file
+         */
+
+        if (
+            !fileInput.files ||
+            fileInput.files.length === 0
+        ) {
+
+            result.className =
+                "upload-result error";
+
+
+            result.textContent =
+                "Please select a document first.";
+
+
+            return;
+        }
+
+
+        /*
+         * Selected file
+         */
+
+        const file =
+            fileInput.files[0];
+
+
+        /*
+         * FormData
+         */
+
+        const formData =
+            new FormData();
+
+
+        formData.append(
+            "file",
+            file
+        );
+
+
+        /*
+         * Loading state
+         */
+
+        button.disabled =
+            true;
+
+
+        button.textContent =
+            "Indexing...";
+
+
+        result.className =
+            "upload-result";
+
+
+        result.textContent =
+            "";
+
+
+        try {
+
+
+            /*
+             * Upload to Flask
+             */
+
+            const response =
+                await fetch(
+                    "/upload",
+                    {
+                        method: "POST",
+
+                        body:
+                            formData
+                    }
+                );
+
+
+            /*
+             * Parse response
+             */
+
+            let data;
+
+
+            try {
+
+                data =
+                    await response.json();
+
+            }
+
+            catch (jsonError) {
+
+                throw new Error(
+                    "The server returned an invalid response."
+                );
+
+            }
+
+
+            /*
+             * Check response
+             */
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.error ||
+                    "Document upload failed."
+                );
+
+            }
+
+
+            /*
+             * Success
+             */
+
+            result.className =
+                "upload-result success";
+
+
+            result.textContent =
+                data.message ||
+                "Document indexed successfully.";
+
+
+            fileInput.value =
+                "";
+
+
+        }
+
+        catch (error) {
+
+
+            result.className =
+                "upload-result error";
+
+
+            result.textContent =
+                error.message ||
+                "Upload failed.";
+
+        }
+
+        finally {
+
+
+            button.disabled =
+                false;
+
+
+            button.textContent =
+                "Upload & Index";
+
+        }
+
+    }
+
+
+    /* ========================================================
+       AUTO-GROW TEXTAREA
+    ======================================================== */
+
+    const questionInput =
+        document.getElementById("question");
+
+
+    questionInput.addEventListener(
+        "input",
+        function() {
+
+            this.style.height =
+                "47px";
+
+
+            this.style.height =
+                Math.min(
+                    this.scrollHeight,
+                    130
+                ) + "px";
+
+        }
+    );
+
+
+    /* ========================================================
+       ENTER TO SEND
+    ======================================================== */
+
+    questionInput.addEventListener(
+        "keydown",
+        function(event) {
+
+
+            if (
+                event.key === "Enter" &&
+                !event.shiftKey
+            ) {
+
+                event.preventDefault();
+
+                askQuestion();
+
+            }
+
+        }
+    );
+
+</script>
+
+</body>
+</html>
