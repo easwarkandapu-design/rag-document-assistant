@@ -484,7 +484,7 @@ Now answer the user's question.
 
     model = os.getenv(
         "GEMINI_CHAT_MODEL",
-        "gemini-3.6-flash-lite"
+        "gemini-3.5-flash-lite"
     )
 
     return generate_with_retry(
