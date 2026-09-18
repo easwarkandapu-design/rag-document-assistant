@@ -564,6 +564,29 @@ Now answer the user's question.
             f"{answer.strip()}\n\n"
             f"Sources Used: {source_list}"
         )
+        fallback = (
+            "The uploaded documents do not provide enough "
+            "information to answer that."
+        )
+
+        if (
+            not citations
+            and rows
+            and fallback.lower() not in answer.lower()
+        ):
+            source_list = ", ".join(
+                f"[SOURCE {index}]"
+                for index in range(
+                    1,
+                    len(rows) + 1
+                )
+            )
+
+            answer = (
+                f"{answer.strip()}\n\n"
+                f"Sources Used: {source_list}"
+            )
+
 
     return answer
 
