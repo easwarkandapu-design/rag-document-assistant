@@ -383,9 +383,56 @@ def generate_with_retry(
             answer = ""
 
             if response is not None:
-                answer = (
-                    getattr(response, "text", "") or ""
+
+                # Read only actual text parts.
+                # This avoids SDK warnings caused by
+                # non-text parts such as thought signatures.
+                text_parts = []
+
+                for candidate in getattr(
+                    response,
+                    "candidates",
+                    []
+                ) or []:
+
+                    content = getattr(
+                        candidate,
+                        "content",
+                        None
+                    )
+
+                    for part in getattr(
+                        content,
+                        "parts",
+                        []
+                    ) or []:
+
+                        part_text = getattr(
+                            part,
+                            "text",
+                            None
+                        )
+
+                        if part_text:
+                            text_parts.append(
+                                part_text
+                            )
+
+                answer = "\n".join(
+                    text_parts
                 ).strip()
+
+                # Fallback for SDK responses where
+                # candidates/parts are unavailable.
+                if not answer:
+
+                    answer = (
+                        getattr(
+                            response,
+                            "text",
+                            ""
+                        ) or ""
+                    ).strip()
 
             if answer:
                 return answer
@@ -406,8 +453,7 @@ def generate_with_retry(
 
             if attempt < attempts - 1:
 
-                # Retry all temporary/API failures.
-                # This also helps with transient Gemini failures.
+                # Retry temporary/API failures.
                 wait_time = 2 ** attempt
 
                 print(
@@ -415,7 +461,9 @@ def generate_with_retry(
                     f"{wait_time} seconds..."
                 )
 
-                time.sleep(wait_time)
+                time.sleep(
+                    wait_time
+                )
 
     raise last_error
 
@@ -430,7 +478,9 @@ def generate_answer(
     strict=False
 ):
 
-    evidence = build_evidence(rows)
+    evidence = build_evidence(
+        rows
+    )
 
     if strict:
 
@@ -487,10 +537,35 @@ Now answer the user's question.
         "gemini-3.5-flash-lite"
     )
 
-    return generate_with_retry(
+    answer = generate_with_retry(
         model,
         prompt
     )
+
+    # Gemini can occasionally omit citation markers
+    # even when answering from the supplied evidence.
+    citations = re.findall(
+        r"\[SOURCE\s+(\d+)\]",
+        answer,
+        flags=re.IGNORECASE
+    )
+
+    if not citations and rows:
+
+        source_list = ", ".join(
+            f"[SOURCE {index}]"
+            for index in range(
+                1,
+                len(rows) + 1
+            )
+        )
+
+        answer = (
+            f"{answer.strip()}\n\n"
+            f"Sources Used: {source_list}"
+        )
+
+    return answer
 
 
 # =========================================================
@@ -535,7 +610,9 @@ def validate_answer(
     # Make sure cited source numbers exist.
     for citation in citations:
 
-        number = int(citation)
+        number = int(
+            citation
+        )
 
         if number < 1 or number > len(rows):
             return False, "invalid_source_citation"
@@ -547,7 +624,9 @@ def validate_answer(
 # MAIN RAG PIPELINE
 # =========================================================
 
-def answer_question(question: str):
+def answer_question(
+    question: str
+):
 
     question = (
         question or ""
@@ -580,7 +659,8 @@ def answer_question(question: str):
 
             print(
                 f"[RAG] chunk={row['chunk_index']} "
-                f"similarity={float(row['similarity']):.4f}"
+                f"similarity="
+                f"{float(row['similarity']):.4f}"
             )
 
         if not rows:
@@ -619,7 +699,8 @@ def answer_question(question: str):
         )
 
         print(
-            f"[VALIDATOR] valid={valid}, reason={reason}"
+            f"[VALIDATOR] valid={valid}, "
+            f"reason={reason}"
         )
 
         # =================================================
@@ -629,7 +710,8 @@ def answer_question(question: str):
         if not valid:
 
             print(
-                f"[VALIDATOR] First validation failed: {reason}"
+                f"[VALIDATOR] First validation failed: "
+                f"{reason}"
             )
 
             answer = generate_answer(
@@ -659,7 +741,9 @@ def answer_question(question: str):
                 "enough information to answer that."
             )
 
-            reason = "insufficient_verified_evidence"
+            reason = (
+                "insufficient_verified_evidence"
+            )
 
         # =================================================
         # STEP 6: SOURCE INFORMATION
@@ -699,14 +783,23 @@ def answer_question(question: str):
 
         print("\n")
         print("=" * 60)
-        print("[RAG ERROR]")
+
+        print(
+            "[RAG ERROR]"
+        )
+
         print(
             f"Type: {type(error).__name__}"
         )
+
         print(
             f"Message: {error}"
         )
-        print("=" * 60)
+
+        print(
+            "=" * 60
+        )
+
         print("\n")
 
         return {
